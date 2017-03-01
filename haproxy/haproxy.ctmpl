@@ -1,0 +1,30 @@
+global
+    debug
+    # Recommended SSL ciphers as per https://hynek.me/articles/hardening-your-web-servers-ssl-ciphers/
+    ssl-default-bind-options no-sslv3
+    ssl-default-bind-ciphers ECDH+AESGCM:DH+AESGCM:ECDH+AES256:DH+AES256:ECDH+AES128:DH+AES:ECDH+3DES:DH+3DES:RSA+AESGCM:RSA+AES:RSA+3DES:!aNULL:!MD5:!DSS
+
+    ssl-default-server-options no-sslv3
+    ssl-default-server-ciphers ECDH+AESGCM:DH+AESGCM:ECDH+AES256:DH+AES256:ECDH+AES128:DH+AES:ECDH+3DES:DH+3DES:RSA+AESGCM:RSA+AES:RSA+3DES:!aNULL:!MD5:!DSS
+    tune.ssl.default-dh-param 2048
+
+defaults
+    mode http
+    option forwardfor
+    option http-server-close
+    timeout connect 5000
+    timeout server 10000
+    timeout client 10000
+
+### HTTP frontend ###
+frontend www
+    bind *:80
+
+    acl host_web-nodejs hdr(host) -i web-nodejs.{{ or (env "HAPROXY_DOMAIN") "haproxy.service.consul" }}
+    use_backend web-nodejs_backend if host_web-nodejs
+
+### Consul-configured backend services ###
+
+backend web-nodejs_backend
+{{ range service "web-nodejs" }}
+   server {{ .Node }}-{{ .Port }} {{ .Address }}:{{ .Port }}{{ end }}
